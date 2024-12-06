@@ -18,14 +18,13 @@ from django.http import Http404
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django_countries import countries
+from edx_sysadmin.models import CourseGitLog
+from edx_sysadmin.utils.markup import HTML, Text
 from git import InvalidGitRepositoryError, NoSuchPathError, Repo
 from openedx.core.djangoapps.user_authn.toggles import (
     is_require_third_party_auth_enabled,
 )
 from xmodule.modulestore.django import modulestore
-
-from edx_sysadmin.models import CourseGitLog
-from edx_sysadmin.utils.markup import HTML, Text
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -40,26 +39,28 @@ def get_course_by_id(course_key, depth=0):
     If such a course does not exist, raises a 404.
 
     depth: The number of levels of children for the modulestore to cache. None means infinite depth
-    """
+    """  # noqa: E501
     with modulestore().bulk_operations(course_key):
         course = modulestore().get_course(course_key, depth=depth)
     if course:
         return course
     else:
-        raise Http404(f"{_('Course not found')}: {course_key}")
+        msg = f"{_('Course not found')}: {course_key}"
+        raise Http404(msg)
 
 
 def get_registration_required_extra_fields():
     """
-    It processes and returns a list of extra fields which are required for User account
-    registration through Registration API "/user_api/v1/account/registration/", depending
-    upon "settings.REGISTRATION_EXTRA_FIELDS" environment setting
+    Process and return a list of extra fields which are required for User account
+    registration through Registration API "/user_api/v1/account/registration/",
+    depending upon "settings.REGISTRATION_EXTRA_FIELDS" environment setting
 
     Arguments:
     None
 
     Returns:
-    extra_fields (list) - list of required fields from "settings.REGISTRATION_EXTRA_FIELDS"
+    extra_fields (list) - list of required fields
+    from "settings.REGISTRATION_EXTRA_FIELDS"
     """
     extra_fields = []
     for field, status in settings.REGISTRATION_EXTRA_FIELDS.items():
@@ -70,15 +71,15 @@ def get_registration_required_extra_fields():
 
 def get_registration_required_extra_fields_with_values():
     """
-    It maps registration required extra fields with some pre-defined default values to create
-    django form fields dynamically
+    Map registration required extra fields with some pre-defined default values to
+    create django form fields dynamically
 
     Arguments:
     None
 
     Returns:
-    extra_fields (dict) - contains all required fields and their mapping with default values
-    and form type.
+    extra_fields (dict) - contains all required fields and their mapping with default
+    values and form type.
     {
         ...
         "FIELD_NAME": {
@@ -91,7 +92,8 @@ def get_registration_required_extra_fields_with_values():
     """
     extra_fields = {}
 
-    # If Registration API is not functional we can't use it, so no need to process extra fields
+    # If Registration API is not functional we can't use it,
+    # so no need to process extra fields.
     if is_registration_api_functional():
         fields_and_default_values_map = get_fields_and_default_values_map()
         for field in get_registration_required_extra_fields():
@@ -103,15 +105,17 @@ def get_registration_required_extra_fields_with_values():
 
 def is_registration_api_functional():
     """
-    Checks if User Registration API "/user_api/v1/account/registration/" is functional or not
-    depending upon two environment variables "settings.FEATURES['ALLOW_PUBLIC_ACCOUNT_CREATION']"
-    and "settings.ENABLE_REQUIRE_THIRD_PARTY_AUTH"
+    Check if User Registration API "/user_api/v1/account/registration/" is functional
+    or not depending upon two environment variables
+    "settings.FEATURES['ALLOW_PUBLIC_ACCOUNT_CREATION']" and
+    "settings.ENABLE_REQUIRE_THIRD_PARTY_AUTH"
 
     Arguments:
     None
 
     Returns:
-    Boolean - True if User Registration API "/user_api/v1/account/registration/" is functional
+    Boolean - True if User Registration API "/user_api/v1/account/registration/"
+    is functional.
     """
     if (
         settings.FEATURES["ALLOW_PUBLIC_ACCOUNT_CREATION"]
@@ -121,20 +125,22 @@ def is_registration_api_functional():
     return False
 
 
-def create_user_account(data, use_reg_api=True):
+def create_user_account(data, use_reg_api=True):  # noqa: FBT002
     """
     Create User Account through "/user_api/v1/account/registration/" API (if available)
     or directly through "User" and "UserProfile" models
 
     Arguments:
-    data (dict) - the params to use while creating user account, it can have "username", "name",
-        "email", "password" and many other registration related fields
+    data (dict) - the params to use while creating user account,
+        it can have "username", "name", "email", "password" and
+        many other registration related fields
 
-    use_reg_api (boolean) - used to specify which account creation flow should be followed
+    use_reg_api (boolean) - used to specify which account creation
+        flow should be followed.
 
     Returns:
-    context (dict) - having context to be passed to templates having information about success and
-        failure of account creation
+    context (dict) - having context to be passed to templates having information
+        about success and failure of account creation.
     """
     context = {}
     if is_registration_api_functional() and use_reg_api:
@@ -147,14 +153,14 @@ def create_user_account(data, use_reg_api=True):
 
 def create_user_through_db_models(data):
     """
-    It Registers User through database models
+    Register User through database models
 
     Arguments:
     data (dict) - User account details
 
     Returns:
-    context (dict) - context to be passed to templates having information about success and
-        failure of account creation
+    context (dict) - context to be passed to templates having information about success
+        and failure of account creation
     """
     context = {}
     try:
@@ -176,7 +182,7 @@ def create_user_through_db_models(data):
                 "error_message"
             ] = f"{_('An account already exists with email')}: {data['email']}"
             return context
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception as err:  # noqa: BLE001
         context[
             "error_message"
         ] = f"{_('Account could not be created due to following error')}: {err}"
@@ -192,31 +198,31 @@ def make_reg_api_request(data):
     data (dict) - User account details
 
     Returns:
-    context (dict) - context to be passed to templates having information about success and
-        failure of account creation
+    context (dict) - context to be passed to templates having information
+        about success and failure of account creation
     """
     context = {}
 
     api_endpoint = urllib.parse.urljoin(
         get_lms_root_url(), reverse("user_api_registration")
     )
-    resp = requests.post(api_endpoint, data=data)
+    resp = requests.post(api_endpoint, data=data)  # noqa: S113
 
-    if resp.status_code == 200:
+    if resp.status_code == 200:  # noqa: PLR2004
         context[
             "success_message"
-        ] = f"{_('A new account has been registered through API for user')}: {data.get('username')}"
+        ] = f"{_('A new account has been registered through API for user')}: {data.get('username')}"  # noqa: E501
     else:
         context[
             "error_message"
-        ] = f"{_('Account could not be created due to following error(s)')}: {transform_error_message(resp.content)}"
+        ] = f"{_('Account could not be created due to following error(s)')}: {transform_error_message(resp.content)}"  # noqa: E501
 
     return context
 
 
 def get_lms_root_url():
     """
-    It returns LMS Root URL of edx-platform
+    Return LMS Root URL of edx-platform
 
     Returns:
     url (str) - LMS Root URL
@@ -226,7 +232,7 @@ def get_lms_root_url():
 
 def transform_error_message(resp_content):
     """
-    It transforms Registration API error messages
+    Transform Registration API error messages
 
     Arguments:
     resp_content (response.content) - Response object's content
@@ -284,13 +290,14 @@ def get_country_choices():
 
 def get_fields_and_default_values_map():
     """
-    It maps registration required extra fields with some pre-defined default values
+    Map registration required extra fields with some pre-defined default values
 
     Arguments:
     None
 
     Returns:
-    fields_and_default_values_map (dict) - contains all required fields and their mapping with default values
+    fields_and_default_values_map (dict) - contains all required fields and their
+    mapping with default values.
     and form type.
     {
         ...
@@ -335,7 +342,7 @@ def get_fields_and_default_values_map():
 
 def user_has_access_to_sysadmin(user):
     """
-    Checks if user has access to sysadmin panel or not
+    Check if user has access to sysadmin panel or not
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to syadmin else False
     """
@@ -351,7 +358,7 @@ def user_has_access_to_sysadmin(user):
 
 def show_sysadmin_dashboard(user):
     """
-    Checks if all the requirements for showing edx-sysadmin are fulfilled
+    Check if all the requirements for showing edx-sysadmin are fulfilled
     :return boolean: True if all requirements are fulfilled else False
     """
     return user_has_access_to_sysadmin(user)
@@ -359,7 +366,7 @@ def show_sysadmin_dashboard(user):
 
 def user_has_access_to_users_panel(user):
     """
-    Checks if user has access to "Users" panel or not
+    Check if user has access to "Users" panel or not
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Users" panel else False
     """
@@ -370,7 +377,7 @@ def user_has_access_to_users_panel(user):
 
 def user_has_access_to_courses_panel(user):
     """
-    Checks if user has access to "Courses" panel or not
+    Check if user has access to "Courses" panel or not
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Courses" panel else False
     """
@@ -381,7 +388,7 @@ def user_has_access_to_courses_panel(user):
 
 def user_has_access_to_git_logs_panel(user):
     """
-    Checks if user has access to "Git Logs" panel or not
+    Check if user has access to "Git Logs" panel or not
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Git Logs" panel else False
     """
@@ -395,7 +402,7 @@ def user_has_access_to_git_logs_panel(user):
 
 def user_has_access_to_git_import_panel(user):
     """
-    Checks if user has access to "Git Import" panel or not
+    Check if user has access to "Git Import" panel or not
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Git Import" panel else False
     """
@@ -406,7 +413,9 @@ def user_has_access_to_git_import_panel(user):
 
 def remove_old_course_import_logs(course_id):
     """
-    Removes old CourseGitLog if the log count increases the settings.SYSADMIN_MAX_GIT_LOGS_THRESHOLD
+    Remove old CourseGitLog if the log count increases the
+    settings.SYSADMIN_MAX_GIT_LOGS_THRESHOLD.
+
     :param course_id: CourseLocation object to target specific logs
     :return int: Count of deleted logs if anything gets deleted else 0
     """
@@ -433,15 +442,16 @@ def get_local_course_repo(repo_name):
     :param repo_name: course repo name to be fetched from local repos directory
     :return git.Repo: git course repo object else None
     """
-    if os.path.isdir(settings.GIT_REPO_DIR) and repo_name:
+    if os.path.isdir(settings.GIT_REPO_DIR) and repo_name:  # noqa: PTH112
         try:
-            return Repo(os.path.join(settings.GIT_REPO_DIR, repo_name))
+            return Repo(os.path.join(settings.GIT_REPO_DIR, repo_name))  # noqa: PTH118
         except (
             InvalidGitRepositoryError,
             NoSuchPathError,
         ) as e:
-            logger.exception(str(e))
+            logger.exception(str(e))  # noqa: TRY401
             return None
+    return None
 
 
 def get_local_active_branch(repo):

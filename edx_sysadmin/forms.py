@@ -22,12 +22,12 @@ class UserRegistrationForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         """
-        Overrides __init__ method to add dynamic fields in the form
+        Override __init__ method to add dynamic fields in the form
 
         Arguments:
-        kwargs["extra_fields"] (dict) - Contains data regarding the fields we want to get
-        added dynamically to form depending upon which fields are made "required" in the edX platform
-        through REGISTRATION_EXTRA_FIELDS environment variable
+        kwargs["extra_fields"] (dict) - Contains data regarding the fields we want to
+        get added dynamically to form depending upon which fields are made "required"
+        in the edX platform through REGISTRATION_EXTRA_FIELDS environment variable
         """
 
         extra_fields = kwargs.pop("extra_fields", {})
@@ -43,17 +43,18 @@ class UserRegistrationForm(forms.Form):
 
     def clean_confirm_password(self):
         """
-        Validates if confirm_password matches password or not
+        Validate if confirm_password matches password or not
         """
         password = self.cleaned_data.get("password")
         confirm_password = self.cleaned_data.get("confirm_password")
         if password and confirm_password and password != confirm_password:
-            raise forms.ValidationError("Passwords do not match")
+            msg = "Passwords do not match"
+            raise forms.ValidationError(msg)
         return confirm_password
 
     def clean(self):
         """
-        Overrides clean method to add "confirm_email" to "cleaned_data"
+        Override clean method to add "confirm_email" to "cleaned_data"
         """
         cleaned_data = super().clean()
         cleaned_data["confirm_email"] = cleaned_data.get("email", "")

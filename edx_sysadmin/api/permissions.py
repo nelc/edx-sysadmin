@@ -2,17 +2,15 @@
 Custom Permissions for edx-sysadmin API Views
 """
 
-from hashlib import sha256, sha1
 import hmac
 import logging
+from hashlib import sha1, sha256
 
 from django.conf import settings
 from django.utils.encoding import force_bytes
 from django.utils.translation import gettext as _
 from rest_framework import permissions, status
 from rest_framework.exceptions import APIException
-from rest_framework.response import Response
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,7 @@ class GithubWebhookPermission(permissions.BasePermission):
     :returns boolean: True if permission is valid else False
     """
 
-    def has_permission(self, request, view):
+    def has_permission(self, request, view):  # noqa: ARG002
         def _validate_github_webhook_signature(request):
             """
             Validate Github webhook request signature
@@ -75,7 +73,7 @@ class GithubWebhookPermission(permissions.BasePermission):
         is_valid, err_msg = _validate_github_webhook_signature(request)
 
         if not is_valid:
-            logger.exception(f"{self.__class__.__name__}:: {err_msg}")
+            logger.exception(f"{self.__class__.__name__}:: {err_msg}")  # noqa: G004
             raise GithubWebhookPermissionException(detail=err_msg)
 
         return is_valid

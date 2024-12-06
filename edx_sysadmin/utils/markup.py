@@ -11,7 +11,7 @@ import markupsafe
 Text = markupsafe.escape
 
 
-def HTML(html):  # pylint: disable=invalid-name
+def HTML(html):  # noqa: N802
     """
     Mark a string as already HTML, so that it won't be escaped before output.
 

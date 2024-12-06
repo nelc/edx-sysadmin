@@ -1,26 +1,24 @@
 import json
 import logging
-from path import Path as path
 import subprocess
 
 from django.conf import settings
-from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
-from rest_framework import status, permissions
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.views import APIView
-from rest_framework.response import Response
-
 from edx_sysadmin.api.permissions import GithubWebhookPermission
 from edx_sysadmin.git_import import (
-    add_repo,
     DEFAULT_GIT_REPO_DIR,
+    add_repo,
 )
 from edx_sysadmin.utils.utils import (
+    get_clean_branch_name,
     get_local_active_branch,
     get_local_course_repo,
-    get_clean_branch_name,
 )
+from path import Path as get_path  # noqa: N813
+from rest_framework import permissions, status
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,7 @@ class GitReloadAPIView(APIView):
 
     permission_classes = [GithubWebhookPermission]
 
-    def post(self, request):
+    def post(self, request):  # noqa: PLR0912
         """
         Trigger for github webhooks for course reload
         """
@@ -45,7 +43,7 @@ class GitReloadAPIView(APIView):
             pushed_branch = payload.get("ref", "")
             clean_pushed_branch = get_clean_branch_name(pushed_branch)
 
-            if not event == "push":
+            if event != "push":
                 err_msg = _("The API works for 'Push' events only")
             elif not repo_name:
                 err_msg = _("Couldn't find Repo's name in the payload")
@@ -60,29 +58,30 @@ class GitReloadAPIView(APIView):
                 err_msg = _("SYSADMIN_DEFAULT_BRANCH is not configured in settings")
             elif clean_pushed_branch != settings.SYSADMIN_DEFAULT_BRANCH:
                 err_msg = _(
-                    "Couldn't entertain reload request for the branch ({}), expected branch is ({}) "
+                    "Couldn't entertain reload request for the branch ({}), expected branch is ({}) "  # noqa: E501
                 ).format(clean_pushed_branch, settings.SYSADMIN_DEFAULT_BRANCH)
             else:
                 repo = get_local_course_repo(repo_name)
                 if not repo:
-                    # New course reload trigger received from a repo but we don't have it's local copy.
-                    # So, We will do the course import instead of reload
+                    # New course reload trigger received from a repo but we don't have
+                    # it's local copy. We will do the course import instead of reload
 
                     add_repo.delay(
                         repo=repo_ssh_url, branch=settings.SYSADMIN_DEFAULT_BRANCH
                     )
                     msg = _(
-                        "No local course copy found. Triggered course import from branch: {} of repo: {}"
+                        "No local course copy found. Triggered course import from branch: {} of repo: {}"  # noqa: E501
                     ).format(settings.SYSADMIN_DEFAULT_BRANCH, repo_name)
                     return self.get_reload_response(
                         msg=msg, status_code=status.HTTP_200_OK
                     )
 
                 else:
-                    # We have an existing local copy of the course, so we will reload the course after making sure that
-                    # the reload trigger is from the same branch that was used to import the course initially
+                    # We have an existing local copy of the course, so we will reload
+                    # the course after making sure that the reload trigger is from the
+                    # same branch that was used to import the course initially
                     active_branch = get_local_active_branch(repo)
-                    if not active_branch or not active_branch == pushed_branch:
+                    if not active_branch or active_branch != pushed_branch:
                         err_msg = _(
                             "The pushed branch ({}) is not currently in use"
                         ).format(pushed_branch)
@@ -94,8 +93,7 @@ class GitReloadAPIView(APIView):
                         return self.get_reload_response(
                             msg=msg, status_code=status.HTTP_200_OK
                         )
-
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             err_msg = str(e)
 
         return self.get_reload_response(
@@ -104,9 +102,9 @@ class GitReloadAPIView(APIView):
 
     def get_reload_response(self, msg, status_code):
         if status_code == status.HTTP_200_OK:
-            logger.info(f"{self.__class__.__name__}:: {msg}")
+            logger.info(f"{self.__class__.__name__}:: {msg}")  # noqa: G004
         else:
-            logger.exception(f"{self.__class__.__name__}:: {msg}")
+            logger.exception(f"{self.__class__.__name__}:: {msg}")  # noqa: G004
 
         return Response(
             {"message": msg},
@@ -136,24 +134,26 @@ class GitCourseDetailsAPIView(APIView):
             else:
                 err_msg = "Course directory name is required"
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             err_msg = str(e)
 
-        logger.exception(f"{self.__class__.__name__}:: {err_msg}")
+        logger.exception(f"{self.__class__.__name__}:: {err_msg}")  # noqa: G004
         return Response(
             {"message": err_msg},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     def git_info_for_course(self, course_dir):
-        """This pulls out some git info like the last commit"""
+        """
+        Pull out some git info like the last commit
+        """
 
         git_dir = settings.DATA_DIR / course_dir
 
         # Try the data dir, then try to find it in the git import dir
         if not git_dir.exists():
             git_repo_dir = getattr(settings, "GIT_REPO_DIR", DEFAULT_GIT_REPO_DIR)
-            git_dir = path(git_repo_dir) / course_dir
+            git_dir = get_path(git_repo_dir) / course_dir
             if not git_dir.exists():
                 return ["", "", ""]
 
@@ -165,7 +165,7 @@ class GitCourseDetailsAPIView(APIView):
         ]
         try:
             output_json = json.loads(
-                subprocess.check_output(cmd, cwd=git_dir).decode("utf-8")
+                subprocess.check_output(cmd, cwd=git_dir).decode("utf-8")  # noqa: S603
             )
         except OSError as error:
             logger.warning("Error fetching git data: %s - %s", course_dir, error)

@@ -18,9 +18,6 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import condition
 from django.views.generic.base import RedirectView, TemplateView
-from opaque_keys.edx.keys import CourseKey
-from xmodule.modulestore.django import modulestore
-
 from edx_sysadmin import git_import
 from edx_sysadmin.forms import UserRegistrationForm
 from edx_sysadmin.git_import import GitImportError
@@ -37,6 +34,8 @@ from edx_sysadmin.utils.utils import (
     user_has_access_to_sysadmin,
     user_has_access_to_users_panel,
 )
+from opaque_keys.edx.keys import CourseKey
+from xmodule.modulestore.django import modulestore
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ log = logging.getLogger(__name__)
 class SysadminDashboardRedirectionView(RedirectView):
     """Redirection view to land user to specific panel"""
 
-    def get_redirect_url(self, *args, **kwargs):
+    def get_redirect_url(self, *args, **kwargs):  # noqa: ARG002
         """Override redirection_url"""
 
         if user_has_access_to_users_panel(self.request.user):
@@ -83,7 +82,7 @@ class SysadminDashboardBaseView(TemplateView):
 
     def get_context_data(self, **kwargs):
         """
-        Overriding get_context_data method to add custom fields
+        Override get_context_data method to add custom fields
         """
         context = super().get_context_data(**kwargs)
         context.update(
@@ -113,7 +112,7 @@ class CoursesPanel(SysadminDashboardBaseView):
     """
 
     template_name = "edx_sysadmin/courses.html"
-    datatable = []
+    datatable = []  # type: ignore  # noqa: PGH003
 
     def get_course_summaries(self):
         """Get an iterable list of course summaries."""
@@ -121,7 +120,7 @@ class CoursesPanel(SysadminDashboardBaseView):
         return modulestore().get_course_summaries()
 
     def make_datatable(self, courses=None):
-        """Creates course information datatable"""
+        """Create course information datatable"""
 
         data = {}
         for course in courses or self.get_course_summaries():
@@ -131,8 +130,8 @@ class CoursesPanel(SysadminDashboardBaseView):
                 "git_directory": course.id.course,
             }
 
-        return dict(
-            header=[
+        return {
+            "header": [
                 _("Course Name"),
                 _("Directory/ID"),
                 # Translators: "Git Commit" is a computer command; see http://gitref.org/basic/#commit
@@ -141,14 +140,14 @@ class CoursesPanel(SysadminDashboardBaseView):
                 _("Last Editor"),
                 _("Action"),
             ],
-            title=_("Information about all courses"),
-            data=data,
-            api_url=reverse("sysadmin:api:git-course-details"),
-        )
+            "title": _("Information about all courses"),
+            "data": data,
+            "api_url": reverse("sysadmin:api:git-course-details"),
+        }
 
     def get_context_data(self, **kwargs):
         """
-        Overriding get_context_data method to add custom fields
+        Override get_context_data method to add custom fields
         """
         context = super().get_context_data(**kwargs)
         context.update(
@@ -171,10 +170,10 @@ class CoursesPanel(SysadminDashboardBaseView):
             try:
                 course = get_course_by_id(course_key)
                 course_found = True
-            except Exception as err:  # pylint: disable=broad-except
+            except Exception as err:  # noqa: BLE001
                 message += Text(
                     _(
-                        "{div_start} Error - cannot get course with ID {course_key} {error} {div_end}"
+                        "{div_start} Error - cannot get course with ID {course_key} {error} {div_end}"  # noqa: E501
                     )
                 ).format(
                     div_start=HTML("<div class='error'>"),
@@ -191,7 +190,7 @@ class CoursesPanel(SysadminDashboardBaseView):
                 # don't delete user permission groups, though
                 message += Text(
                     _(
-                        "{font_start} Deleted {course_name} = {course_id} {location} {font_end}"
+                        "{font_start} Deleted {course_name} = {course_id} {location} {font_end}"  # noqa: E501
                     )
                 ).format(
                     font_start=HTML("<font class='success'>"),
@@ -219,7 +218,7 @@ class UsersPanel(SysadminDashboardBaseView):
 
     def get_context_data(self, **kwargs):
         """
-        Overriding get_context_data method to add custom fields
+        Override get_context_data method to add custom fields
         """
         context = super().get_context_data(**kwargs)
         initial_data = kwargs.pop("initial_data", None)
@@ -238,7 +237,7 @@ class UsersPanel(SysadminDashboardBaseView):
         )
         return context
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):  # noqa: ARG002
         """
         POST method for User registration
         """
@@ -276,31 +275,27 @@ class GitImport(SysadminDashboardBaseView):
 
     def get_context_data(self, **kwargs):
         """
-        Overriding get_context_data method to add custom fields
+        Override get_context_data method to add custom fields
         """
         context = super().get_context_data(**kwargs)
         context["is_git_import_tab"] = True
         return context
 
     def get_course_from_git(self, gitloc, branch):
-        """This downloads and runs the checks for importing a course in git"""
+        """Download and run the checks for importing a course in git"""
 
         if not (
-            gitloc.endswith(".git")
-            or gitloc.startswith("http:")
-            or gitloc.startswith("https:")
-            or gitloc.startswith("git:")
+            gitloc.endswith(".git") or gitloc.startswith(("http:", "https:", "git:"))
         ):
-            message = HTML("<p style='color:#cb0712'>{0}</p>").format(
-                "The git repo location should end with '.git', " "and be a valid url"
+            return HTML("<p style='color:#cb0712'>{0}</p>").format(
+                "The git repo location should end with '.git', and be a valid url"
             )
-            return message
 
         return self.import_mongo_course(gitloc, branch)
 
     def import_mongo_course(self, gitloc, branch):
         """
-        Imports course using management command and captures logging output
+        Import course using management command and captures logging output
         at debug level for display in template
         """
 
@@ -393,14 +388,14 @@ class GitLogs(SysadminDashboardBaseView):
 
     def get_context_data(self, **kwargs):
         """
-        Overriding get_context_data method to add custom fields
+        Override get_context_data method to add custom fields
         """
         context = super().get_context_data(**kwargs)
         context["is_git_logs_tab"] = True
         return context
 
-    def get(self, request, *args, **kwargs):
-        """Shows logs of imports that happened as a result of a git import"""
+    def get(self, request, *args, **kwargs):  # noqa: ARG002
+        """Show logs of imports that happened as a result of a git import"""
         course_id = kwargs.get("course_id")
         if course_id:
             course_id = CourseKey.from_string(course_id)
