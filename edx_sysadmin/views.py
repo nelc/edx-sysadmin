@@ -34,6 +34,7 @@ from edx_sysadmin.utils.utils import (
     user_has_access_to_sysadmin,
     user_has_access_to_users_panel,
 )
+from lms.djangoapps.branding import get_visible_courses
 from opaque_keys.edx.keys import CourseKey
 from xmodule.modulestore.django import modulestore
 
@@ -116,8 +117,7 @@ class CoursesPanel(SysadminDashboardBaseView):
 
     def get_course_summaries(self):
         """Get an iterable list of course summaries."""
-
-        return modulestore().get_course_summaries()
+        return get_visible_courses()
 
     def make_datatable(self, courses=None):
         """Create course information datatable"""
