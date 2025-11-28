@@ -1,6 +1,7 @@
 """
 Views for the Open edX SysAdmin Plugin
 """
+
 # pylint: disable=wrong-import-order
 import logging
 from io import StringIO
@@ -18,6 +19,10 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import condition
 from django.views.generic.base import RedirectView, TemplateView
+from opaque_keys import InvalidKeyError
+from opaque_keys.edx.keys import CourseKey
+from xmodule.modulestore.django import modulestore
+
 from edx_sysadmin import git_import
 from edx_sysadmin.forms import UserRegistrationForm
 from edx_sysadmin.git_import import GitImportError
@@ -34,8 +39,6 @@ from edx_sysadmin.utils.utils import (
     user_has_access_to_sysadmin,
     user_has_access_to_users_panel,
 )
-from opaque_keys.edx.keys import CourseKey
-from xmodule.modulestore.django import modulestore
 
 log = logging.getLogger(__name__)
 
@@ -165,7 +168,23 @@ class CoursesPanel(SysadminDashboardBaseView):
         message = ""
         if action == "del_course":
             course_id = request.POST.get("course_id", "").strip()
-            course_key = CourseKey.from_string(course_id)
+
+            try:
+                course_key = CourseKey.from_string(course_id)
+            except InvalidKeyError:
+                message += Text(
+                    _(
+                        "{div_start} Error - invalid course ID: {course_id}. A valid course key looks like: course-v1:OpenedX+DemoX+DemoCourse {div_end}"  # noqa: E501
+                    )
+                ).format(
+                    div_start=HTML("<div class='error'>"),
+                    course_id=course_id,
+                    div_end=HTML("</div>"),
+                )
+                context_data = self.get_context_data()
+                context_data.update({"msg": message})
+                return render(request, self.template_name, context_data)
+
             course_found = False
             try:
                 course = get_course_by_id(course_key)

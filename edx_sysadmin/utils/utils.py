@@ -1,6 +1,7 @@
 """
 Utility function defined here.
 """
+
 # pylint: disable=wrong-import-order
 import json
 import logging
@@ -18,13 +19,14 @@ from django.http import Http404
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django_countries import countries
-from edx_sysadmin.models import CourseGitLog
-from edx_sysadmin.utils.markup import HTML, Text
 from git import InvalidGitRepositoryError, NoSuchPathError, Repo
 from openedx.core.djangoapps.user_authn.toggles import (
     is_require_third_party_auth_enabled,
 )
 from xmodule.modulestore.django import modulestore
+
+from edx_sysadmin.models import CourseGitLog
+from edx_sysadmin.utils.markup import HTML, Text
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -117,7 +119,7 @@ def is_registration_api_functional():
     Boolean - True if User Registration API "/user_api/v1/account/registration/"
     is functional.
     """
-    if (
+    if (  # noqa: SIM103
         settings.FEATURES["ALLOW_PUBLIC_ACCOUNT_CREATION"]
         and not is_require_third_party_auth_enabled()
     ):
@@ -174,18 +176,18 @@ def create_user_through_db_models(data):
             profile.name = data.get("name")
             profile.save()
 
-            context[
-                "success_message"
-            ] = f"{_('A new account has been registered for user')}: {data['username']}"
+            context["success_message"] = (
+                f"{_('A new account has been registered for user')}: {data['username']}"
+            )
         else:
-            context[
-                "error_message"
-            ] = f"{_('An account already exists with email')}: {data['email']}"
+            context["error_message"] = (
+                f"{_('An account already exists with email')}: {data['email']}"
+            )
             return context
     except Exception as err:  # noqa: BLE001
-        context[
-            "error_message"
-        ] = f"{_('Account could not be created due to following error')}: {err}"
+        context["error_message"] = (
+            f"{_('Account could not be created due to following error')}: {err}"
+        )
 
     return context
 
@@ -209,13 +211,13 @@ def make_reg_api_request(data):
     resp = requests.post(api_endpoint, data=data)  # noqa: S113
 
     if resp.status_code == 200:  # noqa: PLR2004
-        context[
-            "success_message"
-        ] = f"{_('A new account has been registered through API for user')}: {data.get('username')}"  # noqa: E501
+        context["success_message"] = (
+            f"{_('A new account has been registered through API for user')}: {data.get('username')}"  # noqa: E501
+        )
     else:
-        context[
-            "error_message"
-        ] = f"{_('Account could not be created due to following error(s)')}: {transform_error_message(resp.content)}"  # noqa: E501
+        context["error_message"] = (
+            f"{_('Account could not be created due to following error(s)')}: {transform_error_message(resp.content)}"  # noqa: E501
+        )
 
     return context
 
@@ -346,7 +348,7 @@ def user_has_access_to_sysadmin(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to syadmin else False
     """
-    if (
+    if (  # noqa: SIM103
         user_has_access_to_users_panel(user)
         or user_has_access_to_courses_panel(user)
         or user_has_access_to_git_logs_panel(user)
@@ -370,7 +372,7 @@ def user_has_access_to_users_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Users" panel else False
     """
-    if user and user.is_staff:
+    if user and user.is_staff:  # noqa: SIM103
         return True
     return False
 
@@ -381,7 +383,7 @@ def user_has_access_to_courses_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Courses" panel else False
     """
-    if user and user.is_staff:
+    if user and user.is_staff:  # noqa: SIM103
         return True
     return False
 
@@ -392,7 +394,7 @@ def user_has_access_to_git_logs_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Git Logs" panel else False
     """
-    if user and (
+    if user and (  # noqa: SIM103
         user.is_staff
         or user.courseaccessrole_set.filter(role=CourseInstructorRole.ROLE).exists()
     ):
@@ -406,7 +408,7 @@ def user_has_access_to_git_import_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Git Import" panel else False
     """
-    if user and user.is_staff:
+    if user and user.is_staff:  # noqa: SIM103
         return True
     return False
 

@@ -1,65 +1,14 @@
-*.py[cod]
-__pycache__
-.pytest_cache
-
-# C extensions
-*.so
-
-# Packages
-*.egg
-*.egg-info
-/dist
-/build
-/eggs
-/parts
-/bin
-/var
-/sdist
-/develop-eggs
-/.installed.cfg
-/lib
-/lib64
-
-# Installer logs
-pip-log.txt
-
-# Unit test / coverage reports
-.cache/
-.pytest_cache/
-.coverage
-.coverage.*
-.tox
-coverage.xml
-htmlcov/
-
-
-
-# The Silver Searcher
-.agignore
-
-# OS X artifacts
+# Build artifacts
+/dist/
+/.pids
+# Python files
+/.venv/
+/.idea/
+__pycache__/
+*.egg-info/
 *.DS_Store
-
-# Logging
-log/
-logs/
-chromedriver.log
-ghostdriver.log
-
-# Complexity
-output/*.html
-output/*/index.html
-
-# Sphinx
-docs/_build
-docs/modules.rst
-docs/edx_sysadmin.rst
-docs/edx_sysadmin.*.rst
-
-# Private requirements
-requirements/private.in
-requirements/private.txt
-
-# IDE related
-.idea/
-.vscode/
+# Test Runtime
+ol_test_requirements.txt
+**/.coverage
+**/test_root
+coverage.xml

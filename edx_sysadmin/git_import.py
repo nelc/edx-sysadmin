@@ -2,8 +2,10 @@
 Provides a function for importing a git repository into the lms
 instance when using a mongo modulestore
 """
+
 # pylint: disable=wrong-import-order
 
+import importlib
 import logging
 import os
 import re
@@ -17,18 +19,19 @@ from django.core import management
 from django.core.management.base import CommandError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from opaque_keys.edx.locator import CourseLocator
+from xmodule.modulestore.django import SignalHandler
+from xmodule.util.sandboxing import DEFAULT_PYTHON_LIB_FILENAME
+
 from edx_sysadmin.models import CourseGitLog
 from edx_sysadmin.utils.utils import (
     DEFAULT_GIT_REPO_PREFIX,
     remove_old_course_import_logs,
 )
-from opaque_keys.edx.locator import CourseLocator
-from xmodule.modulestore.django import SignalHandler
-from xmodule.util.sandboxing import DEFAULT_PYTHON_LIB_FILENAME
 
 log = logging.getLogger(__name__)
 
-DEFAULT_GIT_REPO_DIR = "/edx/var/app/edxapp/git_course_repos"
+DEFAULT_GIT_REPO_DIR = "/openedx/course_repos"
 
 
 # pylint: disable=raise-missing-from
@@ -131,8 +134,10 @@ def cmd_log(cmd, cwd):
     used along with the output. Will raise subprocess.CalledProcessError if
     command doesn't return 0, and returns the command's output.
     """  # noqa: D401
-    output = subprocess.check_output(
-        cmd, cwd=cwd, stderr=subprocess.STDOUT  # noqa: S603
+    output = subprocess.check_output(  # noqa: S603
+        cmd,
+        cwd=cwd,
+        stderr=subprocess.STDOUT,
     ).decode("utf-8")
 
     log.debug("Command was: %s. Working directory was: %s", " ".join(cmd), cwd)
@@ -140,7 +145,7 @@ def cmd_log(cmd, cwd):
     return output
 
 
-def switch_branch(branch, rdir):  # noqa: PLR0912
+def switch_branch(branch, rdir):
     """
     Determine how to change the branch of the repo, and then
     use the appropriate git commands to do so.
@@ -239,7 +244,6 @@ def add_repo(repo, rdir_in=None, branch=None):  # noqa: PLR0912, PLR0915, C901
     python_lib_filename = getattr(
         settings, "PYTHON_LIB_FILENAME", DEFAULT_PYTHON_LIB_FILENAME
     )
-
     if not os.path.isdir(git_repo_dir):  # noqa: PTH112
         raise GitImportNoDirError(git_repo_dir)
     # pull from git
@@ -332,8 +336,11 @@ def add_repo(repo, rdir_in=None, branch=None):  # noqa: PLR0912, PLR0915, C901
         loggers.append(logger)
 
     try:
+        import_cmd = importlib.import_module(
+            "cms.djangoapps.contentstore.management.commands.import"
+        )
         management.call_command(
-            "import",
+            import_cmd.Command(),
             git_repo_dir,
             rdir,
             nostatic=not git_import_static,
@@ -378,7 +385,7 @@ def add_repo(repo, rdir_in=None, branch=None):  # noqa: PLR0912, PLR0915, C901
             log.debug("   -> exists, but is not symlink")
             log.debug(
                 subprocess.check_output(
-                    [  # noqa: S603, S607
+                    [  # noqa: S607
                         "ls",
                         "-l",
                     ],
@@ -393,14 +400,15 @@ def add_repo(repo, rdir_in=None, branch=None):  # noqa: PLR0912, PLR0915, C901
         if not os.path.exists(cdir):  # noqa: PTH110
             log.debug("   -> creating symlink between %s and %s", rdirp, cdir)
             try:
-                os.symlink(
-                    os.path.abspath(rdirp), os.path.abspath(cdir)  # noqa: PTH100
+                os.symlink(  # noqa: PTH211
+                    os.path.abspath(rdirp),  # noqa: PTH100
+                    os.path.abspath(cdir),  # noqa: PTH100
                 )
             except OSError:
                 log.exception("Unable to create course symlink")
             log.debug(
                 subprocess.check_output(
-                    [  # noqa: S603, S607
+                    [  # noqa: S607
                         "ls",
                         "-l",
                     ],

@@ -4,6 +4,13 @@ import subprocess
 
 from django.conf import settings
 from django.utils.translation import gettext as _
+from path import Path as get_path  # noqa: N813
+from path import Path as path  # noqa: N813
+from rest_framework import permissions, status
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from edx_sysadmin.api.permissions import GithubWebhookPermission
 from edx_sysadmin.git_import import (
     DEFAULT_GIT_REPO_DIR,
@@ -14,11 +21,6 @@ from edx_sysadmin.utils.utils import (
     get_local_active_branch,
     get_local_course_repo,
 )
-from path import Path as get_path  # noqa: N813
-from rest_framework import permissions, status
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class GitReloadAPIView(APIView):
 
     permission_classes = [GithubWebhookPermission]
 
-    def post(self, request):  # noqa: PLR0912
+    def post(self, request):
         """
         Trigger for github webhooks for course reload
         """
@@ -58,7 +60,7 @@ class GitReloadAPIView(APIView):
                 err_msg = _("SYSADMIN_DEFAULT_BRANCH is not configured in settings")
             elif clean_pushed_branch != settings.SYSADMIN_DEFAULT_BRANCH:
                 err_msg = _(
-                    "Couldn't entertain reload request for the branch ({}), expected branch is ({}) "  # noqa: E501
+                    "Couldn't reload course from the branch ({}), expected branch was ({}) "  # noqa: E501
                 ).format(clean_pushed_branch, settings.SYSADMIN_DEFAULT_BRANCH)
             else:
                 repo = get_local_course_repo(repo_name)
@@ -93,8 +95,9 @@ class GitReloadAPIView(APIView):
                         return self.get_reload_response(
                             msg=msg, status_code=status.HTTP_200_OK
                         )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             err_msg = str(e)
+            logger.exception(f"{self.__class__.__name__}:: {err_msg}")  # noqa: G004
 
         return self.get_reload_response(
             msg=err_msg, status_code=status.HTTP_400_BAD_REQUEST
@@ -104,7 +107,7 @@ class GitReloadAPIView(APIView):
         if status_code == status.HTTP_200_OK:
             logger.info(f"{self.__class__.__name__}:: {msg}")  # noqa: G004
         else:
-            logger.exception(f"{self.__class__.__name__}:: {msg}")  # noqa: G004
+            logger.info(f"{self.__class__.__name__}:: {msg}")  # noqa: G004
 
         return Response(
             {"message": msg},
@@ -147,8 +150,7 @@ class GitCourseDetailsAPIView(APIView):
         """
         Pull out some git info like the last commit
         """
-
-        git_dir = settings.DATA_DIR / course_dir
+        git_dir = path(settings.DATA_DIR) / course_dir
 
         # Try the data dir, then try to find it in the git import dir
         if not git_dir.exists():

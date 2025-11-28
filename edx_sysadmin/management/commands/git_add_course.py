@@ -1,15 +1,17 @@
 """
 Script for importing courseware from git/xml into a mongo modulestore
 """
+
 # pylint: disable=wrong-import-order
 
 import logging
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.translation import gettext as _
-from edx_sysadmin import git_import
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.xml import XMLModuleStore
+
+from edx_sysadmin import git_import
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +25,7 @@ class Command(BaseCommand):
     # versioned files. A branch is a sub grouping of a repository that
     # has a specific version of the repository. A modulestore is the database used
     # to store the courses for use on the Web site.
-    help = (  # noqa: A003
+    help = (
         "Usage: "
         "git_add_course repository_url [directory to check out into] [repository_branch] "  # noqa: E501
         "\n{}".format(
@@ -56,4 +58,4 @@ class Command(BaseCommand):
         try:
             git_import.add_repo(options["repository_url"], rdir_arg, branch)
         except git_import.GitImportError as ex:
-            raise CommandError(str(ex))  # noqa: B904, TRY200
+            raise CommandError(str(ex))  # noqa: B904
