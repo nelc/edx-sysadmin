@@ -19,6 +19,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import condition
 from django.views.generic.base import RedirectView, TemplateView
+from lms.djangoapps.branding import get_visible_courses
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from xmodule.modulestore.django import modulestore
@@ -119,8 +120,7 @@ class CoursesPanel(SysadminDashboardBaseView):
 
     def get_course_summaries(self):
         """Get an iterable list of course summaries."""
-
-        return modulestore().get_course_summaries()
+        return get_visible_courses()
 
     def make_datatable(self, courses=None):
         """Create course information datatable"""
