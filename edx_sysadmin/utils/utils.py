@@ -10,7 +10,7 @@ import urllib.parse
 
 import requests
 from common.djangoapps.student.models import UserProfile
-from common.djangoapps.student.roles import CourseInstructorRole
+from common.djangoapps.student.roles import OrgInstructorRole, OrgStaffRole
 from common.djangoapps.util.password_policy_validators import normalize_password
 from django import forms
 from django.conf import settings
@@ -20,9 +20,8 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django_countries import countries
 from git import InvalidGitRepositoryError, NoSuchPathError, Repo
-from openedx.core.djangoapps.user_authn.toggles import (
-    is_require_third_party_auth_enabled,
-)
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.core.djangoapps.user_authn.toggles import is_require_third_party_auth_enabled
 from xmodule.modulestore.django import modulestore
 
 from edx_sysadmin.models import CourseGitLog
@@ -366,15 +365,45 @@ def show_sysadmin_dashboard(user):
     return user_has_access_to_sysadmin(user)
 
 
+def user_has_staff_org_role(user):
+    """
+    Checks if user has the staff role associated with the current organization.
+    :param user: User object of currently loggedin user
+    :return boolean: True if user has the role else False
+    """
+    orgs = configuration_helpers.get_current_site_orgs()
+
+    if orgs:
+        for org in orgs:
+            if OrgStaffRole(org=org).has_user(user):
+                return True
+
+    return user.is_staff
+
+
+def user_has_instructor_org_role(user):
+    """
+    Checks if user has the instructor role associated with the current organization.
+    :param user: User object of currently loggedin user
+    :return boolean: True if user has the role else False
+    """
+    orgs = configuration_helpers.get_current_site_orgs()
+
+    if orgs:
+        for org in orgs:
+            if OrgInstructorRole(org=org).has_user(user):
+                return True
+
+    return False
+
+
 def user_has_access_to_users_panel(user):
     """
     Check if user has access to "Users" panel or not
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Users" panel else False
     """
-    if user and user.is_staff:  # noqa: SIM103
-        return True
-    return False
+    return user_has_staff_org_role(user)
 
 
 def user_has_access_to_courses_panel(user):
@@ -383,9 +412,7 @@ def user_has_access_to_courses_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Courses" panel else False
     """
-    if user and user.is_staff:  # noqa: SIM103
-        return True
-    return False
+    return user_has_staff_org_role(user)
 
 
 def user_has_access_to_git_logs_panel(user):
@@ -394,9 +421,9 @@ def user_has_access_to_git_logs_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Git Logs" panel else False
     """
-    if user and (  # noqa: SIM103
-        user.is_staff
-        or user.courseaccessrole_set.filter(role=CourseInstructorRole.ROLE).exists()
+    if user and (
+        user_has_staff_org_role(user)
+        or user_has_instructor_org_role(user)
     ):
         return True
     return False
@@ -408,9 +435,7 @@ def user_has_access_to_git_import_panel(user):
     :param user: User object of currently loggedin user
     :return boolean: True if user has access to "Git Import" panel else False
     """
-    if user and user.is_staff:  # noqa: SIM103
-        return True
-    return False
+    return user_has_staff_org_role(user)
 
 
 def remove_old_course_import_logs(course_id):
